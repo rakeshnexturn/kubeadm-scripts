@@ -6,7 +6,7 @@ set -euxo pipefail
 
 # If you need public access to API server using the servers Public IP adress, change PUBLIC_IP_ACCESS to true.
 
-PUBLIC_IP_ACCESS="true"
+PUBLIC_IP_ACCESS="false"
 NODENAME=$(hostname -s)
 POD_CIDR="192.168.0.0/16"
 
@@ -39,8 +39,4 @@ sudo chown "$(id -u)":"$(id -g)" "$HOME"/.kube/config
 
 # Install Claico Network Plugin Network 
 
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
-
-curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml -O
-
-kubectl create -f custom-resources.yaml
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
