@@ -4,23 +4,19 @@
 
 set -euxo pipefail
 
-# Kuernetes Variable Declaration
-
+# Kubernetes Variable Declaration
 KUBERNETES_VERSION="1.29.0-1.1"
 
-# disable swap
+# Disable swap
 sudo swapoff -a
 
-# keeps the swaf off during reboot
+# Keep swap off during reboot
 (crontab -l 2>/dev/null; echo "@reboot /sbin/swapoff -a") | crontab - || true
 sudo apt-get update -y
 
-
 # Install CRI-O Runtime
-
 OS="xUbuntu_22.04"
-
-VERSION="1.28"
+VERSION="1.24"
 
 # Create the .conf file to load the modules at bootup
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -31,7 +27,7 @@ EOF
 sudo modprobe overlay
 sudo modprobe br_netfilter
 
-# sysctl params required by setup, params persist across reboots
+# Sysctl params required by setup, params persist across reboots
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -41,6 +37,7 @@ EOF
 # Apply sysctl params without reboot
 sudo sysctl --system
 
+# Add CRI-O repositories
 cat <<EOF | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
 deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /
 EOF
@@ -51,16 +48,16 @@ EOF
 curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/Release.key | sudo apt-key --keyring /etc/apt/trusted.gpg.d/libcontainers.gpg add -
 curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key | sudo apt-key --keyring /etc/apt/trusted.gpg.d/libcontainers.gpg add -
 
+# Install CRI-O
 sudo apt-get update
-sudo apt-get install cri-o cri-o-runc -y
+sudo apt-get install -y cri-o cri-o-runc
 
 sudo systemctl daemon-reload
 sudo systemctl enable crio --now
 
-echo "CRI runtime installed susccessfully"
+echo "CRI-O runtime installed successfully"
 
-# Install kubelet, kubectl and Kubeadm
-
+# Install kubelet, kubectl, and kubeadm
 sudo apt-get update -y
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 
@@ -72,11 +69,12 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-1-29-apt-keyring.gpg] https://
 
 sudo apt-get update -y
 sudo apt-get install -y kubelet="$KUBERNETES_VERSION" kubectl="$KUBERNETES_VERSION" kubeadm="$KUBERNETES_VERSION"
-sudo apt-get update -y
 sudo apt-mark hold kubelet kubeadm kubectl
 
+# Install jq
 sudo apt-get install -y jq
 
+# Configure kubelet with node IP
 local_ip="$(ip --json addr show eth0 | jq -r '.[0].addr_info[] | select(.family == "inet") | .local')"
 cat > /etc/default/kubelet << EOF
 KUBELET_EXTRA_ARGS=--node-ip=$local_ip
